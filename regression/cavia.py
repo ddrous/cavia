@@ -12,7 +12,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 import utils
-import tasks_sine, tasks_celebA
+import tasks_sine, tasks_celebA, tasks_selkov
 from cavia_model import CaviaModel
 from logger import Logger
 
@@ -39,6 +39,10 @@ def run(args, log_interval=5000, rerun=False):
         task_family_train = tasks_sine.RegressionTasksSinusoidal()
         task_family_valid = tasks_sine.RegressionTasksSinusoidal()
         task_family_test = tasks_sine.RegressionTasksSinusoidal()
+    elif args.task == 'selkov': # ohup python3 regression/main.py --task selkov --n_iter 100 --tasks_per_metaupdate 16 > nohup.log &
+        task_family_train = tasks_selkov.RegressionTasksSelkov(mode='train')
+        task_family_valid = tasks_selkov.RegressionTasksSelkov(mode='valid')
+        task_family_test = tasks_selkov.RegressionTasksSelkov(mode='adapt')
     elif args.task == 'celeba':
         task_family_train = tasks_celebA.CelebADataset('train', device=args.device)
         task_family_valid = tasks_celebA.CelebADataset('valid', device=args.device)
@@ -80,14 +84,21 @@ def run(args, log_interval=5000, rerun=False):
             model.reset_context_params()
 
             # get data for current task
-            train_inputs = task_family_train.sample_inputs(args.k_meta_train, args.use_ordered_pixels).to(args.device)
+            train_inputs = task_family_train.sample_inputs(args.k_meta_train, t, args.use_ordered_pixels).to(args.device)
+
+            # get targets
+            # train_inputs = train_inputs.detach().
+            # # if i_iter==0:
+            # train_targets = target_functions[t](train_inputs)
+            # train_targets = torch.Tensor(train_targets).to(args.device)
+
+            # train_inputs = train_inputs.to(args.device)
+
+            train_targets = task_family_train.sample_targets(args.k_meta_train, t, args.use_ordered_pixels).to(args.device)
 
             for _ in range(args.num_inner_updates):
                 # forward through model
                 train_outputs = model(train_inputs)
-
-                # get targets
-                train_targets = target_functions[t](train_inputs)
 
                 # ------------ update on current task ------------
 
@@ -104,13 +115,16 @@ def run(args, log_interval=5000, rerun=False):
             # ------------ compute meta-gradient on test loss of current task ------------
 
             # get test data
-            test_inputs = task_family_train.sample_inputs(args.k_meta_test, args.use_ordered_pixels).to(args.device)
+            test_inputs = task_family_train.sample_inputs(args.k_meta_test, t, args.use_ordered_pixels).to(args.device)
 
             # get outputs after update
             test_outputs = model(test_inputs)
 
             # get the correct targets
-            test_targets = target_functions[t](test_inputs)
+            # if i_iter==0:
+            # test_targets = target_functions[t](test_inputs.cpu())
+            # test_targets = torch.Tensor(test_targets).to(args.device)
+            test_targets = task_family_train.sample_targets(args.k_meta_test, t, args.use_ordered_pixels).to(args.device)
 
             # compute loss after updating context (will backprop through inner loop)
             loss_meta = F.mse_loss(test_outputs, test_targets)
@@ -177,8 +191,14 @@ def run(args, log_interval=5000, rerun=False):
 
 
 def eval_cavia(args, model, task_family, num_updates, n_tasks=100, return_gradnorm=False):
+    """ adaptation ? """
     # get the task family
-    input_range = task_family.get_input_range().to(args.device)
+    # input_range = task_family.get_input_range().to(args.device)
+
+    if args.task == 'selkov':
+        n_tasks = len(task_family.environments)
+    else:
+        n_tasks = 100
 
     # logging
     losses = []
@@ -195,8 +215,10 @@ def eval_cavia(args, model, task_family, num_updates, n_tasks=100, return_gradno
         model.reset_context_params()
 
         # get data for current task
-        curr_inputs = task_family.sample_inputs(args.k_shot_eval, args.use_ordered_pixels).to(args.device)
-        curr_targets = target_function(curr_inputs)
+        curr_inputs = task_family.sample_inputs(args.k_shot_eval, t, args.use_ordered_pixels).to(args.device)
+        # curr_targets = target_function(curr_inputs.cpu())
+        # curr_targets = torch.Tensor(curr_targets).to(args.device)
+        curr_targets = task_family.sample_targets(args.k_shot_eval, t, args.use_ordered_pixels).to(args.device)
 
         # ------------ update on current task ------------
 
@@ -225,7 +247,8 @@ def eval_cavia(args, model, task_family, num_updates, n_tasks=100, return_gradno
 
         # compute true loss on entire input range
         model.eval()
-        losses.append(F.mse_loss(model(input_range), target_function(input_range)).detach().item())
+        # losses.append(F.mse_loss(model(input_range), target_function(input_range)).detach().item())
+        losses.append(task_loss.detach().item())
         model.train()
 
     losses_mean = np.mean(losses)

@@ -29,4 +29,4 @@ class Logger:
                 np.round(self.test_loss[-1], 4),
                 np.round(self.test_conf[-1], 4),
             )
-        )
+        , flush=True)
