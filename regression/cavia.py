@@ -33,13 +33,14 @@ def run(args, log_interval=50, rerun=False):
     utils.set_seed(args.seed)
 
     # --- initialise everything ---
+    ode_tasks = ['selkov', 'lotka']
 
     # get the task family
     if args.task == 'sine':
         task_family_train = tasks_sine.RegressionTasksSinusoidal()
         task_family_valid = tasks_sine.RegressionTasksSinusoidal()
         task_family_test = tasks_sine.RegressionTasksSinusoidal()
-    elif args.task == 'selkov': # nohup python3 regression/main.py --task selkov --n_iter 100 --tasks_per_metaupdate 16 > nohup.log &
+    elif args.task in ode_tasks: # nohup python3 regression/main.py --task selkov --n_iter 100 --tasks_per_metaupdate 16 > nohup.log &
         task_family_train = tasks_selkov.RegressionTasksSelkov(mode='train')
         task_family_valid = tasks_selkov.RegressionTasksSelkov(mode='valid')
         task_family_test = tasks_selkov.RegressionTasksSelkov(mode='adapt')
@@ -51,7 +52,7 @@ def run(args, log_interval=50, rerun=False):
         raise NotImplementedError
 
     # initialise network
-    if args.task == 'selkov':
+    if args.task in ode_tasks:
         model = CaviaModel(n_in=task_family_train.num_inputs,
                         n_out=task_family_train.num_outputs,
                         num_context_params=args.num_context_params,
@@ -100,7 +101,7 @@ def run(args, log_interval=50, rerun=False):
             # get targets
             # train_inputs = train_inputs.detach().
 
-            if args.task == 'selkov':
+            if args.task in ode_tasks:
                 train_targets, t_eval = task_family_train.sample_targets(args.k_meta_train, t, args.use_ordered_pixels)
                 train_targets, t_eval = train_targets.to(args.device), t_eval.to(args.device)
             else:
@@ -139,7 +140,7 @@ def run(args, log_interval=50, rerun=False):
             test_outputs = model(test_inputs, t_eval)
 
             # get the correct targets
-            if args.task == 'selkov':
+            if args.task in ode_tasks:
                 test_targets, t_eval = task_family_train.sample_targets(args.k_meta_test, t, args.use_ordered_pixels)
                 test_targets, t_eval = test_targets.to(args.device), t_eval.to(args.device)
             else:
@@ -215,7 +216,9 @@ def eval_cavia(args, model, task_family, num_updates, n_tasks=100, return_gradno
     # get the task family
     # input_range = task_family.get_input_range().to(args.device)
 
-    if args.task == 'selkov':
+    ode_tasks = ['selkov', 'lotka']
+
+    if args.task in ode_tasks:
         n_tasks = len(task_family.environments)
     else:
         n_tasks = 100
@@ -238,7 +241,7 @@ def eval_cavia(args, model, task_family, num_updates, n_tasks=100, return_gradno
         curr_inputs, t_eval = task_family.sample_inputs(args.k_shot_eval, t, args.use_ordered_pixels)
         curr_inputs, t_eval = curr_inputs.to(args.device), t_eval.to(args.device)
 
-        if args.task == 'selkov':
+        if args.task in ode_tasks:
             curr_targets, t_eval= task_family.sample_targets(args.k_shot_eval, t, args.use_ordered_pixels)
             curr_targets, t_eval = curr_targets.to(args.device), t_eval.to(args.device)
         else:
