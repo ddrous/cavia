@@ -1,5 +1,7 @@
 saving best model at iter 0
-Iter 0    - time: 2     - [train] loss: 4.8801 (+/-0.8976) - [valid] loss: 4.1921 (+/-0.7448) - [test] loss: 4.1105 (+/-0.8246)
-Iter 10   - time: 1     - [train] loss: 4.0275 (+/-0.7404) - [valid] loss: 4.4188 (+/-0.8722) - [test] loss: 3.9388 (+/-0.7627)
-saving best model at iter 20
-Iter 20   - time: 1     - [train] loss: 3.8795 (+/-0.7055) - [valid] loss: 3.8649 (+/-0.7308) - [test] loss: 4.0832 (+/-0.7425)
+Iter 0    - time: 17    - [train] loss: 6.2933 (+/-0.7574) - [valid] loss: 3.6944 (+/-0.4646) - [test] loss: 4.4021 (+/-2.2121)
+saving best model at iter 100
+Iter 100  - time: 958   - [train] loss: 1.1504 (+/-0.3975) - [valid] loss: 1.1801 (+/-0.325 ) - [test] loss: 1.2735 (+/-1.1905)
+Iter 200  - time: 825   - [train] loss: 2.1071 (+/-0.447 ) - [valid] loss: 1.8661 (+/-0.398 ) - [test] loss: 2.3524 (+/-1.7823)
+
+Total script time in hours minutes seconds:  00:36:00

@@ -37,8 +37,9 @@ class RegressionTasksSelkov:
                 self.data = np.load('regression/data_selkov/adapt_data.npz')
 
         X = self.data['X']
-        inputs = X[env_id, :, :-1, :].reshape((-1, self.num_inputs))
-        return torch.Tensor(inputs)
+        # inputs = X[env_id, :, :-1, :].reshape((-1, self.num_inputs))
+        inputs = X[env_id, :, 0, :].reshape((-1, self.num_inputs))
+        return torch.Tensor(inputs), torch.Tensor(self.data['t'])
 
     def sample_targets(self, batch_size, env_id, *args, **kwargs):
 
@@ -51,8 +52,9 @@ class RegressionTasksSelkov:
                 self.data = np.load('regression/data_selkov/adapt_data.npz')
 
         X = self.data['X']
-        outputs = X[env_id, :, 1:, :].reshape((-1, self.num_inputs))
-        return torch.Tensor(outputs)
+        outputs = X[env_id, :, :, :]
+        # outputs = X[env_id, :, 1:, :].reshape((-1, self.num_inputs))
+        return torch.Tensor(outputs).permute((1,0,2)), torch.Tensor(self.data['t'])
 
     def sample_task(self):
         a, b = self.environments[np.random.randint(0, len(self.environments))]
