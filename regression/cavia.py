@@ -13,11 +13,11 @@ import torch.optim as optim
 
 import utils
 import tasks_sine, tasks_celebA, tasks_selkov
-from cavia_model import CaviaModel
+from cavia_model import CaviaModel, CaviaModelOld
 from logger import Logger
 
 
-def run(args, log_interval=5000, rerun=False):
+def run(args, log_interval=50, rerun=False):
     assert not args.maml
 
     # see if we already ran this experiment
@@ -51,12 +51,23 @@ def run(args, log_interval=5000, rerun=False):
         raise NotImplementedError
 
     # initialise network
-    model = CaviaModel(n_in=task_family_train.num_inputs,
-                       n_out=task_family_train.num_outputs,
-                       num_context_params=args.num_context_params,
-                       n_hidden=args.num_hidden_layers,
-                       device=args.device
-                       ).to(args.device)
+    if args.task == 'selkov':
+        model = CaviaModel(n_in=task_family_train.num_inputs,
+                        n_out=task_family_train.num_outputs,
+                        num_context_params=args.num_context_params,
+                        n_hidden=args.num_hidden_layers,
+                        dt=4,
+                        device=args.device
+                        ).to(args.device)
+        n_training_tasks = len(task_family_train.environments)
+    else:
+        model = CaviaModelOld(n_in=task_family_train.num_inputs,
+                        n_out=task_family_train.num_outputs,
+                        num_context_params=args.num_context_params,
+                        n_hidden=args.num_hidden_layers,
+                        device=args.device
+                        ).to(args.device)
+        n_training_tasks = args.tasks_per_metaupdate
 
     # intitialise meta-optimiser
     # (only on shared params - context parameters are *not* registered parameters of the model)
@@ -74,11 +85,11 @@ def run(args, log_interval=5000, rerun=False):
         meta_gradient = [0 for _ in range(len(model.state_dict()))]
 
         # sample tasks
-        target_functions = task_family_train.sample_tasks(args.tasks_per_metaupdate)
+        target_functions = task_family_train.sample_tasks(n_training_tasks)
 
         # --- inner loop ---
 
-        for t in range(args.tasks_per_metaupdate):
+        for t in range(n_training_tasks):
 
             # reset private network weights
             model.reset_context_params()
@@ -88,13 +99,14 @@ def run(args, log_interval=5000, rerun=False):
 
             # get targets
             # train_inputs = train_inputs.detach().
-            # # if i_iter==0:
-            # train_targets = target_functions[t](train_inputs)
-            # train_targets = torch.Tensor(train_targets).to(args.device)
+
+            if args.task == 'selkov':
+                train_targets = task_family_train.sample_targets(args.k_meta_train, t, args.use_ordered_pixels).to(args.device)
+            else:
+                train_targets = target_functions[t](train_inputs)
+                train_targets = torch.Tensor(train_targets).to(args.device)
 
             # train_inputs = train_inputs.to(args.device)
-
-            train_targets = task_family_train.sample_targets(args.k_meta_train, t, args.use_ordered_pixels).to(args.device)
 
             for _ in range(args.num_inner_updates):
                 # forward through model
@@ -121,10 +133,11 @@ def run(args, log_interval=5000, rerun=False):
             test_outputs = model(test_inputs)
 
             # get the correct targets
-            # if i_iter==0:
-            # test_targets = target_functions[t](test_inputs.cpu())
-            # test_targets = torch.Tensor(test_targets).to(args.device)
-            test_targets = task_family_train.sample_targets(args.k_meta_test, t, args.use_ordered_pixels).to(args.device)
+            if args.task == 'selkov':
+                test_targets = task_family_train.sample_targets(args.k_meta_test, t, args.use_ordered_pixels).to(args.device)
+            else:
+                test_targets = target_functions[t](test_inputs.cpu())
+                test_targets = torch.Tensor(test_targets).to(args.device)
 
             # compute loss after updating context (will backprop through inner loop)
             loss_meta = F.mse_loss(test_outputs, test_targets)
@@ -140,7 +153,7 @@ def run(args, log_interval=5000, rerun=False):
 
         # assign meta-gradient
         for i, param in enumerate(model.parameters()):
-            param.grad = meta_gradient[i] / args.tasks_per_metaupdate
+            param.grad = meta_gradient[i] / n_training_tasks
 
         # do update step on shared model
         meta_optimiser.step()
@@ -216,9 +229,12 @@ def eval_cavia(args, model, task_family, num_updates, n_tasks=100, return_gradno
 
         # get data for current task
         curr_inputs = task_family.sample_inputs(args.k_shot_eval, t, args.use_ordered_pixels).to(args.device)
-        # curr_targets = target_function(curr_inputs.cpu())
-        # curr_targets = torch.Tensor(curr_targets).to(args.device)
-        curr_targets = task_family.sample_targets(args.k_shot_eval, t, args.use_ordered_pixels).to(args.device)
+
+        if args.task == 'selkov':
+            curr_targets = task_family.sample_targets(args.k_shot_eval, t, args.use_ordered_pixels).to(args.device)
+        else:
+            curr_targets = target_function(curr_inputs.cpu())
+            curr_targets = torch.Tensor(curr_targets).to(args.device)
 
         # ------------ update on current task ------------
 

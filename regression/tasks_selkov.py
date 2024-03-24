@@ -16,11 +16,11 @@ class RegressionTasksSelkov:
 
         # self.input_range = [-5, 5]
         if mode == "train":
-            self.environments = [(0.1, b) for b in np.linspace(0.2, 1.0, 16)]
+            self.environments = [(0.1, b) for b in np.linspace(0.2, 1.0, 15)]
         elif mode == "valid":
-            self.environments = [(0.1, b) for b in np.linspace(0.2, 1.0, 16)]
+            self.environments = [(0.1, b) for b in np.linspace(0.2, 1.0, 15)]
         elif mode == "adapt":
-            self.environments = [(0.1, b) for b in np.linspace(0.2, 1.0, 16)[2::4]]
+            self.environments = [(0.1, b) for b in np.linspace(0.2, 1.0, 15)[2::4]]
         self.mode = mode
 
     def get_input_range(self, size=100):
