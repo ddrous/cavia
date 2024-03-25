@@ -15,12 +15,21 @@ class RegressionTasksLotka:
         # self.b_param = [b for b in np.linspace(0.1, 1.0, 10)]
 
         # self.input_range = [-5, 5]
-        if mode == "train":
-            self.environments = [(0.1, b) for b in np.linspace(0.2, 1.0, 15)]
-        elif mode == "valid":
-            self.environments = [(0.1, b) for b in np.linspace(0.2, 1.0, 15)]
+        if mode == "train" or mode == "valid":
+            self.environments = [
+            {"alpha": 0.5, "beta": 0.5, "gamma": 0.5, "delta": 0.5},
+            {"alpha": 0.5, "beta": 0.75, "gamma": 0.5, "delta": 0.5},
+            {"alpha": 0.5, "beta": 1.0, "gamma": 0.5, "delta": 0.5},
+            {"alpha": 0.5, "beta": 0.5, "gamma": 0.5, "delta": 0.75},
+            {"alpha": 0.5, "beta": 0.5, "gamma": 0.5, "delta": 1.0},
+            {"alpha": 0.5, "beta": 0.75, "gamma": 0.5, "delta": 0.75},
+            {"alpha": 0.5, "beta": 0.75, "gamma": 0.5, "delta": 1.0},
+            {"alpha": 0.5, "beta": 1.0, "gamma": 0.5, "delta": 0.75},
+            {"alpha": 0.5, "beta": 1.0, "gamma": 0.5, "delta": 1.0}]
         elif mode == "adapt":
-            self.environments = [(0.1, b) for b in np.linspace(0.2, 1.0, 15)[2::4]]
+            beta  = [0.625, 0.625, 1.125, 1.125]
+            delta = [0.625, 1.125, 0.625, 1.125]
+            self.environments = [{"alpha": 0.5, "beta": beta_i, "gamma": 0.5, "delta": delta_i} for beta_i, delta_i in zip(beta, delta)]
         self.mode = mode
 
     def get_input_range(self, size=100):

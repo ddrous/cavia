@@ -12,7 +12,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 import utils
-import tasks_sine, tasks_celebA, tasks_selkov
+import tasks_sine, tasks_celebA, tasks_selkov, tasks_lotka
 from cavia_model import CaviaModel, CaviaModelOld
 from logger import Logger
 
@@ -40,10 +40,14 @@ def run(args, log_interval=50, rerun=False):
         task_family_train = tasks_sine.RegressionTasksSinusoidal()
         task_family_valid = tasks_sine.RegressionTasksSinusoidal()
         task_family_test = tasks_sine.RegressionTasksSinusoidal()
-    elif args.task in ode_tasks: # nohup python3 regression/main.py --task selkov --n_iter 100 --tasks_per_metaupdate 16 > nohup.log &
+    elif args.task == "selkov": # nohup python3 regression/main.py --task selkov --n_iter 100 --tasks_per_metaupdate 16 > nohup.log &
         task_family_train = tasks_selkov.RegressionTasksSelkov(mode='train')
         task_family_valid = tasks_selkov.RegressionTasksSelkov(mode='valid')
         task_family_test = tasks_selkov.RegressionTasksSelkov(mode='adapt')
+    elif args.task == "lotka": # nohup python3 regression/main.py --task selkov --n_iter 100 --tasks_per_metaupdate 16 > nohup.log &
+        task_family_train = tasks_lotka.RegressionTasksLotka(mode='train')
+        task_family_valid = tasks_lotka.RegressionTasksLotka(mode='valid')
+        task_family_test = tasks_lotka.RegressionTasksLotka(mode='adapt')
     elif args.task == 'celeba':
         task_family_train = tasks_celebA.CelebADataset('train', device=args.device)
         task_family_valid = tasks_celebA.CelebADataset('valid', device=args.device)
@@ -69,6 +73,9 @@ def run(args, log_interval=50, rerun=False):
                         ).to(args.device)
         n_training_tasks = args.tasks_per_metaupdate
 
+    ## Count the number of parameters in the model
+    print("Number of parameters in the model: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
+
     # intitialise meta-optimiser
     # (only on shared params - context parameters are *not* registered parameters of the model)
     meta_optimiser = optim.Adam(model.parameters(), args.lr_meta)
@@ -85,7 +92,8 @@ def run(args, log_interval=50, rerun=False):
         meta_gradient = [0 for _ in range(len(model.state_dict()))]
 
         # sample tasks
-        target_functions = task_family_train.sample_tasks(n_training_tasks)
+        if args.task not in ode_tasks:
+            target_functions = task_family_train.sample_tasks(n_training_tasks)
 
         # --- inner loop ---
 
@@ -95,8 +103,11 @@ def run(args, log_interval=50, rerun=False):
             model.reset_context_params()
 
             # get data for current task
-            train_inputs, t_eval = task_family_train.sample_inputs(args.k_meta_train, t, args.use_ordered_pixels)
-            train_inputs, t_eval = train_inputs.to(args.device), t_eval.to(args.device)
+            if args.task in ode_tasks:
+                train_inputs, t_eval = task_family_train.sample_inputs(args.k_meta_train, t, args.use_ordered_pixels)
+                train_inputs, t_eval = train_inputs.to(args.device), t_eval.to(args.device)
+            else:
+                train_inputs = task_family_train.sample_inputs(args.k_meta_train, t, args.use_ordered_pixels).to(args.device)
 
             # get targets
             # train_inputs = train_inputs.detach().
@@ -116,7 +127,10 @@ def run(args, log_interval=50, rerun=False):
 
             for _ in range(args.num_inner_updates):
                 # forward through model
-                train_outputs = model(train_inputs, t_eval)
+                if args.task in ode_tasks:
+                    train_outputs = model(train_inputs, t_eval)
+                else:
+                    train_outputs = model(train_inputs)
 
                 # ------------ update on current task ------------
 
@@ -133,11 +147,17 @@ def run(args, log_interval=50, rerun=False):
             # ------------ compute meta-gradient on test loss of current task ------------
 
             # get test data
-            test_inputs, t_eval = task_family_train.sample_inputs(args.k_meta_test, t, args.use_ordered_pixels)
-            test_inputs, t_eval = test_inputs.to(args.device), t_eval.to(args.device)
+            if args.task in ode_tasks:
+                test_inputs, t_eval = task_family_train.sample_inputs(args.k_meta_test, t, args.use_ordered_pixels)
+                test_inputs, t_eval = test_inputs.to(args.device), t_eval.to(args.device)
+            else:
+                test_inputs = task_family_train.sample_inputs(args.k_meta_test, t, args.use_ordered_pixels).to(args.device)
 
             # get outputs after update
-            test_outputs = model(test_inputs, t_eval)
+            if args.task in ode_tasks:
+                test_outputs = model(test_inputs, t_eval)
+            else:
+                test_outputs = model(test_inputs)
 
             # get the correct targets
             if args.task in ode_tasks:
@@ -232,14 +252,18 @@ def eval_cavia(args, model, task_family, num_updates, n_tasks=100, return_gradno
     for t in range(n_tasks):
 
         # sample a task
-        target_function = task_family.sample_task()
+        if args.task not in ode_tasks:
+            target_function = task_family.sample_task()
 
         # reset context parameters
         model.reset_context_params()
 
         # get data for current task
-        curr_inputs, t_eval = task_family.sample_inputs(args.k_shot_eval, t, args.use_ordered_pixels)
-        curr_inputs, t_eval = curr_inputs.to(args.device), t_eval.to(args.device)
+        if args.task in ode_tasks:
+            curr_inputs, t_eval = task_family.sample_inputs(args.k_shot_eval, t, args.use_ordered_pixels)
+            curr_inputs, t_eval = curr_inputs.to(args.device), t_eval.to(args.device)
+        else:
+            curr_inputs = task_family.sample_inputs(args.k_shot_eval, t, args.use_ordered_pixels).to(args.device)
 
         if args.task in ode_tasks:
             curr_targets, t_eval= task_family.sample_targets(args.k_shot_eval, t, args.use_ordered_pixels)
@@ -253,7 +277,10 @@ def eval_cavia(args, model, task_family, num_updates, n_tasks=100, return_gradno
         for _ in range(1, num_updates + 1):
 
             # forward pass
-            curr_outputs = model(curr_inputs, t_eval)
+            if args.task in ode_tasks:
+                curr_outputs = model(curr_inputs, t_eval)
+            else:
+                curr_outputs = model(curr_inputs)
 
             # compute loss for current task
             task_loss = F.mse_loss(curr_outputs, curr_targets)
