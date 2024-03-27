@@ -13,7 +13,12 @@ with open('nohup.log', 'r') as file:
 import re
 
 # Define the regex pattern
-pattern = r'Iter (\d+)\s+- time: \d+\s+- \[train\] loss: (\d+\.\d+)\s+\(\+\/-(\d+\.\d+)\)\s+- \[valid\] loss: (\d+\.\d+)\s+\(\+\/-(\d+\.\d+)\)\s+- \[test\] loss: (\d+\.\d+)\s+\(\+\/-(\d+\.\d+)\)'
+# pattern = r'Iter (\d+)\s+- time: \d+\s+- \[train\] loss: (\d+\.\d+)\s+\(\+\/-(\d+\.\d+)\)\s+- \[valid\] loss: (\d+\.\d+)\s+\(\+\/-(\d+\.\d+)\)\s+- \[test\] loss: (\d+\.\d+)\s+\(\+\/-(\d+\.\d+)\)'
+
+## New patter fater the confidences were removed
+pattern = r'Iter (\d+)\s+- time: \d+\s+- \[train\] loss: (\d+\.\d+)\s+- \[valid\] loss: (\d+\.\d+)\s+- \[test\] loss: (\d+\.\d+)'
+
+
 # Find all the matches
 matches = re.findall(pattern, nohup_log)
 
@@ -25,7 +30,10 @@ matches[:5]
 import pandas as pd
 
 # Create a dataframe from the matches
-df = pd.DataFrame(matches, columns=['iter', 'train_loss', 'train_conf', 'valid_loss', 'valid_conf', 'test_loss', 'test_conf'])
+# df = pd.DataFrame(matches, columns=['iter', 'train_loss', 'train_conf', 'valid_loss', 'valid_conf', 'test_loss', 'test_conf'])
+
+## New dataframe after the confidences were removed
+df = pd.DataFrame(matches, columns=['iter', 'train_loss', 'valid_loss', 'test_loss'])
 
 ## Convert the columns to numeric
 df = df.apply(pd.to_numeric, errors='ignore')
@@ -49,9 +57,14 @@ plt.xlabel('Iteration')
 
 plt.legend()
 
+plt.yscale('log')
 plt.ylabel('Loss')
 plt.title('Train, Valid, and Test Loss')
 
 
 
 # %%
+print(df.tail())
+
+## Dumpp the dataframe to a csv file
+df.to_csv('losses_AnotherAmzingLotka.csv', index=False)
