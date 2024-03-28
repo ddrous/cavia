@@ -336,14 +336,3 @@ Iter 2560 - time: 68    - [train] loss: 0.0046 - [valid] loss: 0.0086 - [test] l
 Iter 2570 - time: 67    - [train] loss: 0.0027 - [valid] loss: 0.0074 - [test] loss: 0.0392
 Iter 2580 - time: 66    - [train] loss: 0.0028 - [valid] loss: 0.0069 - [test] loss: 0.0364
 Iter 2590 - time: 67    - [train] loss: 0.003  - [valid] loss: 0.0108 - [test] loss: 0.0397
-Iter 2600 - time: 70    - [train] loss: 0.003  - [valid] loss: 0.008  - [test] loss: 0.0463
-Iter 2610 - time: 67    - [train] loss: 0.0025 - [valid] loss: 0.0098 - [test] loss: 0.0433
-Iter 2620 - time: 66    - [train] loss: 0.0035 - [valid] loss: 0.0134 - [test] loss: 0.0392
-Iter 2630 - time: 66    - [train] loss: 0.0033 - [valid] loss: 0.0085 - [test] loss: 0.0405
-Iter 2640 - time: 66    - [train] loss: 0.0025 - [valid] loss: 0.0086 - [test] loss: 0.0466
-Iter 2650 - time: 65    - [train] loss: 0.0024 - [valid] loss: 0.009  - [test] loss: 0.0457
-Iter 2660 - time: 67    - [train] loss: 0.0024 - [valid] loss: 0.0103 - [test] loss: 0.0382
-Iter 2670 - time: 66    - [train] loss: 0.0021 - [valid] loss: 0.0079 - [test] loss: 0.0394
-Iter 2680 - time: 66    - [train] loss: 0.002  - [valid] loss: 0.0071 - [test] loss: 0.0435
-Iter 2690 - time: 67    - [train] loss: 0.002  - [valid] loss: 0.007  - [test] loss: 0.0464
-Iter 2700 - time: 67    - [train] loss: 0.0019 - [valid] loss: 0.0066 - [test] loss: 0.0447

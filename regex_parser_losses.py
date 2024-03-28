@@ -62,6 +62,9 @@ plt.ylabel('Loss')
 plt.title('Train, Valid, and Test Loss')
 
 
+## Save the plot
+plt.savefig('losses.png')
+
 
 # %%
 print(df.tail())
