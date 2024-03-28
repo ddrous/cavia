@@ -8,8 +8,8 @@ class RegressionTasksGray:
     """
 
     def __init__(self, mode="train"):
-        self.num_inputs = 32*32
-        self.num_outputs = 32*32
+        self.num_inputs = 32*32*2
+        self.num_outputs = 32*32*2
 
         # self.a_param = [0.1]
         # self.b_param = [b for b in np.linspace(0.1, 1.0, 10)]

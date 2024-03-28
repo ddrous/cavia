@@ -12,9 +12,11 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 import utils
-import tasks_sine, tasks_celebA, tasks_selkov, tasks_lotka, tasks_g_osci
+import tasks_sine, tasks_celebA, tasks_selkov, tasks_lotka, tasks_g_osci, tasks_gray
 from cavia_model import CaviaModel, CaviaModelOld
 from logger import Logger
+
+
 
 
 def run(args, log_interval=50, rerun=False):
@@ -33,7 +35,7 @@ def run(args, log_interval=50, rerun=False):
     utils.set_seed(args.seed)
 
     # --- initialise everything ---
-    ode_tasks = ['selkov', 'lotka', 'g_osci']
+    ode_tasks = ['selkov', 'lotka', 'g_osci', 'gray']
 
     # get the task family
     if args.task == 'sine':
@@ -52,6 +54,10 @@ def run(args, log_interval=50, rerun=False):
         task_family_train = tasks_g_osci.RegressionTasksGOsci(mode='train')
         task_family_valid = tasks_g_osci.RegressionTasksGOsci(mode='valid')
         task_family_test = tasks_g_osci.RegressionTasksGOsci(mode='adapt')
+    elif args.task == 'gray':
+        task_family_train = tasks_gray.RegressionTasksGray(mode='train')
+        task_family_valid = tasks_gray.RegressionTasksGray(mode='valid')
+        task_family_test = tasks_gray.RegressionTasksGray(mode='adapt')
     elif args.task == 'celeba':
         task_family_train = tasks_celebA.CelebADataset('train', device=args.device)
         task_family_valid = tasks_celebA.CelebADataset('valid', device=args.device)
@@ -79,7 +85,11 @@ def run(args, log_interval=50, rerun=False):
 
     ## Count the number of parameters in the model
     print("Number of parameters in the model: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
+    # print("Number of parameters in the model: ", count_parameters(model, mode='ind'))
     # print("Number of environemtns: ", n_training_tasks, args.tasks_per_metaupdate)
+
+    ## Print the model
+    # print(model)
 
     # intitialise meta-optimiser
     # (only on shared params - context parameters are *not* registered parameters of the model)
@@ -103,6 +113,8 @@ def run(args, log_interval=50, rerun=False):
         # --- inner loop ---
 
         for t in range(n_training_tasks):
+
+            torch.cuda.empty_cache()
 
             # reset private network weights
             model.reset_context_params()
@@ -239,7 +251,7 @@ def run(args, log_interval=50, rerun=False):
 def eval_cavia(args, model, task_family, num_updates, n_tasks=100, return_gradnorm=False):
     """ adaptation ? """
     # get the task family
-    ode_tasks = ['selkov', 'lotka', 'g_osci']
+    ode_tasks = ['selkov', 'lotka', 'g_osci', 'gray']
 
     if args.task in ode_tasks:
         # all_inputs = task_family.data['X'].reshape((-1, task_family.num_inputs))

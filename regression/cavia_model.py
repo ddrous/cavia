@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 from torchdiffeq import odeint
+from torchdiffeq import odeint_adjoint
 
 
 
@@ -96,8 +97,8 @@ nls = {'relu': partial(nn.ReLU),
        'tanh': partial(nn.Tanh),
        'selu': partial(nn.SELU),
        'softplus': partial(nn.Softplus),
-       'swish': partial(Swish),
-       'sinus': partial(Sinus),
+    #    'swish': partial(Swish),
+    #    'sinus': partial(Sinus),
        'elu': partial(nn.ELU)}
 
 class GroupSwish(nn.Module):
@@ -126,7 +127,7 @@ class GroupActivation(nn.Module):
         return self.activation(x)
 
 class GroupConv(nn.Module):
-    def __init__(self, state_c, hidden_c=64, groups=1, factor=1.0, nl="swish", size=64, kernel_size=3):
+    def __init__(self, state_c, hidden_c=2, groups=1, factor=1.0, nl="swish", size=64, kernel_size=3):
         super().__init__()
         padding = kernel_size // 2
         self.out_c = state_c
@@ -134,7 +135,7 @@ class GroupConv(nn.Module):
         self.hidden_c = hidden_c
         self.size = size
         self.net = nn.Sequential(
-            nn.Conv2d(state_c * groups, hidden_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups),
+            nn.Conv2d(state_c * groups+1, hidden_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups),
             GroupActivation(nl, groups=groups),
             nn.Conv2d(hidden_c * groups, hidden_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups),
             GroupActivation(nl, groups=groups),
@@ -142,10 +143,30 @@ class GroupConv(nn.Module):
             GroupActivation(nl, groups=groups),
             nn.Conv2d(hidden_c * groups, state_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups)
         )
+        self.flatten = nn.Flatten()
 
-    def forward(self, x):
+    def forward(self, t, x, context):
+        
+        ## Reshape the input to the correct shape: 2 channels of 32x32
+        x = x.view(-1, 2, 32, 32)
+
+        ## repeat the context to match the batch size
+        # context = context.repeat(x.shape[0], -1)
+        context = torch.broadcast_to(context, (x.shape[0], context.shape[0])).view(x.shape[0], 1, 32, 32)
+
+        ## The context is stacked as one channel of the 32x32 image
+        # context = context
+
+        # if x.shape[0] >1:
+        #     print(x.shape, context.shape)
+
+        x = torch.cat([x, context], dim=1)
+
         x = self.net(x) 
-        return x
+
+        # print(x.flatten().shape)
+        ## Return flattene output
+        return self.flatten(x)
 
 
 # class CaviaModel(nn.Module):
@@ -211,6 +232,7 @@ class BetaDeltaModel(nn.Module):
 
 
 
+
 class CaviaModel(nn.Module):
     """
     Feed-forward neural network with context parameters.
@@ -228,7 +250,10 @@ class CaviaModel(nn.Module):
         self.device = device
 
         # fully connected layers
-        self.odefunc = ODEFunc(n_in, n_out, num_context_params, n_hidden, device)
+        # self.odefunc = ODEFunc(n_in, n_out, num_context_params, n_hidden, device)
+
+        ## Convolutional layers
+        self.odefunc = GroupConv(2, hidden_c=172, groups=1, factor=1.0, nl="swish", size=64, kernel_size=3)
 
         # self.betadel = BetaDeltaModel(0.5, 0.5)
         
@@ -240,16 +265,19 @@ class CaviaModel(nn.Module):
 
         # self.parameters = nn.ParameterList([self.betadel.beta, self.betadel.delta, self.context_params])
 
-
+ 
     def reset_context_params(self):
         self.context_params = torch.zeros(self.num_context_params).to(self.device)
         self.context_params.requires_grad = True
 
     def forward(self, x, t_eval):
 
+        # print(x.shape, t_eval.shape)
+
         def newodefunc(t,x):
             return self.odefunc(t,x,self.context_params,)
         pred_y = odeint(newodefunc, x, t_eval, method='dopri5')[:,...]
+        # pred_y = odeint_adjoint(newodefunc, x, t_eval, method='dopri5')[:,...]
 
         # beta, delta = self.betadel(self.context_params)
         # def lotka_voltera(t, y):
