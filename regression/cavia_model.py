@@ -87,6 +87,67 @@ class ODEFunc(nn.Module):
         return y
 
 
+
+
+
+from functools import partial
+nls = {'relu': partial(nn.ReLU),
+       'sigmoid': partial(nn.Sigmoid),
+       'tanh': partial(nn.Tanh),
+       'selu': partial(nn.SELU),
+       'softplus': partial(nn.Softplus),
+       'swish': partial(Swish),
+       'sinus': partial(Sinus),
+       'elu': partial(nn.ELU)}
+
+class GroupSwish(nn.Module):
+    def __init__(self, groups):
+        super().__init__()
+        self.beta = nn.Parameter(torch.tensor([0.5 for _ in range(groups)]))
+        self.groups = groups
+
+    def forward(self, x):
+        n_ch_group = x.size(1) // self.groups
+        t = x.shape[2:]
+        x = x.reshape(-1, self.groups, n_ch_group, *t)
+        beta = self.beta.view(1, self.groups, 1, *[1 for _ in t])
+        return (x * torch.sigmoid_(x * F.softplus(beta))).div_(1.1).reshape(-1, self.groups * n_ch_group, *t)
+
+class GroupActivation(nn.Module):
+    def __init__(self, nl, groups=1):
+        super().__init__()
+        self.groups = groups
+        if nl == 'swish':
+            self.activation = GroupSwish(groups)
+        else:
+            self.activation = nls[nl]()
+
+    def forward(self, x):
+        return self.activation(x)
+
+class GroupConv(nn.Module):
+    def __init__(self, state_c, hidden_c=64, groups=1, factor=1.0, nl="swish", size=64, kernel_size=3):
+        super().__init__()
+        padding = kernel_size // 2
+        self.out_c = state_c
+        self.factor = factor
+        self.hidden_c = hidden_c
+        self.size = size
+        self.net = nn.Sequential(
+            nn.Conv2d(state_c * groups, hidden_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups),
+            GroupActivation(nl, groups=groups),
+            nn.Conv2d(hidden_c * groups, hidden_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups),
+            GroupActivation(nl, groups=groups),
+            nn.Conv2d(hidden_c * groups, hidden_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups),
+            GroupActivation(nl, groups=groups),
+            nn.Conv2d(hidden_c * groups, state_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups)
+        )
+
+    def forward(self, x):
+        x = self.net(x) 
+        return x
+
+
 # class CaviaModel(nn.Module):
 #     """
 #     Feed-forward neural network with context parameters.
