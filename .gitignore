@@ -19,3 +19,7 @@ plots/
 results/
 *result_plots
 *result_files
+
+
+##
+regression/data_gray/*.npz
