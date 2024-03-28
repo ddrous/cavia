@@ -188,7 +188,7 @@ class CaviaModel(nn.Module):
 
         def newodefunc(t,x):
             return self.odefunc(t,x,self.context_params,)
-        pred_y = odeint(newodefunc, x, t_eval, method='dopri5')[:,...]
+        pred_y = odeint(newodefunc, x, t_eval, method='rk4')[:,...]
 
         # beta, delta = self.betadel(self.context_params)
         # def lotka_voltera(t, y):

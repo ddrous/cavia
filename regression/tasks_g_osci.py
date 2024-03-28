@@ -16,20 +16,13 @@ class RegressionTasksGOsci:
 
         # self.input_range = [-5, 5]
         if mode == "train" or mode == "valid":
-            self.environments = [
-            {"alpha": 0.5, "beta": 0.5, "gamma": 0.5, "delta": 0.5},
-            {"alpha": 0.5, "beta": 0.75, "gamma": 0.5, "delta": 0.5},
-            {"alpha": 0.5, "beta": 1.0, "gamma": 0.5, "delta": 0.5},
-            {"alpha": 0.5, "beta": 0.5, "gamma": 0.5, "delta": 0.75},
-            {"alpha": 0.5, "beta": 0.5, "gamma": 0.5, "delta": 1.0},
-            {"alpha": 0.5, "beta": 0.75, "gamma": 0.5, "delta": 0.75},
-            {"alpha": 0.5, "beta": 0.75, "gamma": 0.5, "delta": 1.0},
-            {"alpha": 0.5, "beta": 1.0, "gamma": 0.5, "delta": 0.75},
-            {"alpha": 0.5, "beta": 1.0, "gamma": 0.5, "delta": 1.0}]
+            k1_range = [100, 90, 80]
+            K1_range = [1, 0.75, 0.5]
+            self.environments = [{'J0': 2.5, 'k1': k1, 'k2': 6, 'k3': 16, 'k4': 100, 'k5': 1.28, 'k6': 12, 'K1': K1, 'q': 4, 'N': 1, 'A': 4, 'kappa': 13, 'psi': 0.1, 'k': 1.8} for k1 in k1_range for K1 in K1_range]
         elif mode == "adapt":
-            beta  = [0.625, 0.625, 1.125, 1.125]
-            delta = [0.625, 1.125, 0.625, 1.125]
-            self.environments = [{"alpha": 0.5, "beta": beta_i, "gamma": 0.5, "delta": delta_i} for beta_i, delta_i in zip(beta, delta)]
+            k1_range = [85, 95]
+            K1_range = [0.625, 0.875]
+            self.environments = [{'J0': 2.5, 'k1': k1, 'k2': 6, 'k3': 16, 'k4': 100, 'k5': 1.28, 'k6': 12, 'K1': K1, 'q': 4, 'N': 1, 'A': 4, 'kappa': 13, 'psi': 0.1, 'k': 1.8} for k1 in k1_range for K1 in K1_range]
         self.mode = mode
 
     def get_input_range(self, size=100):
@@ -39,11 +32,11 @@ class RegressionTasksGOsci:
 
         if not hasattr(self, 'data'):
             if self.mode == "train":
-                self.data = np.load('regression/data_lotka/train_data.npz')
+                self.data = np.load('regression/data_g_osci/train_data.npz')
             elif self.mode == "valid":
-                self.data = np.load('regression/data_lotka/test_data.npz')
+                self.data = np.load('regression/data_g_osci/test_data.npz')
             elif self.mode == "adapt":
-                self.data = np.load('regression/data_lotka/adapt_data.npz')
+                self.data = np.load('regression/data_g_osci/adapt_data.npz')
 
         X = self.data['X']
         # inputs = X[env_id, :, :-1, :].reshape((-1, self.num_inputs))
@@ -54,11 +47,11 @@ class RegressionTasksGOsci:
 
         if not hasattr(self, 'data'):
             if self.mode == "train":
-                self.data = np.load('regression/data_lotka/train_data.npz')
+                self.data = np.load('regression/data_g_osci/train_data.npz')
             elif self.mode == "valid":
-                self.data = np.load('regression/data_lotka/test_data.npz')
+                self.data = np.load('regression/data_g_osci/test_data.npz')
             elif self.mode == "adapt":
-                self.data = np.load('regression/data_lotka/adapt_data.npz')
+                self.data = np.load('regression/data_g_osci/adapt_data.npz')
 
         X = self.data['X']
         outputs = X[env_id, :, :, :]

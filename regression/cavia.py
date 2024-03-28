@@ -12,7 +12,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 import utils
-import tasks_sine, tasks_celebA, tasks_selkov, tasks_lotka
+import tasks_sine, tasks_celebA, tasks_selkov, tasks_lotka, tasks_g_osci
 from cavia_model import CaviaModel, CaviaModelOld
 from logger import Logger
 
@@ -33,7 +33,7 @@ def run(args, log_interval=50, rerun=False):
     utils.set_seed(args.seed)
 
     # --- initialise everything ---
-    ode_tasks = ['selkov', 'lotka']
+    ode_tasks = ['selkov', 'lotka', 'g_osci']
 
     # get the task family
     if args.task == 'sine':
@@ -48,6 +48,10 @@ def run(args, log_interval=50, rerun=False):
         task_family_train = tasks_lotka.RegressionTasksLotka(mode='train')
         task_family_valid = tasks_lotka.RegressionTasksLotka(mode='valid')
         task_family_test = tasks_lotka.RegressionTasksLotka(mode='adapt')
+    elif args.task == 'g_osci':
+        task_family_train = tasks_g_osci.RegressionTasksGOsci(mode='train')
+        task_family_valid = tasks_g_osci.RegressionTasksGOsci(mode='valid')
+        task_family_test = tasks_g_osci.RegressionTasksGOsci(mode='adapt')
     elif args.task == 'celeba':
         task_family_train = tasks_celebA.CelebADataset('train', device=args.device)
         task_family_valid = tasks_celebA.CelebADataset('valid', device=args.device)
@@ -235,7 +239,7 @@ def run(args, log_interval=50, rerun=False):
 def eval_cavia(args, model, task_family, num_updates, n_tasks=100, return_gradnorm=False):
     """ adaptation ? """
     # get the task family
-    ode_tasks = ['selkov', 'lotka']
+    ode_tasks = ['selkov', 'lotka', 'g_osci']
 
     if args.task in ode_tasks:
         # all_inputs = task_family.data['X'].reshape((-1, task_family.num_inputs))
