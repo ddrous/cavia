@@ -250,13 +250,13 @@ class CaviaModel(nn.Module):
         self.device = device
 
         # fully connected layers
-        # self.odefunc = ODEFunc(n_in, n_out, num_context_params, n_hidden, device)
+        self.odefunc = ODEFunc(n_in, n_out, num_context_params, n_hidden, device)
 
         ## Convolutional layers
-        self.odefunc = GroupConv(2, hidden_c=172, groups=1, factor=1.0, nl="swish", size=64, kernel_size=3)
+        # self.odefunc = GroupConv(2, hidden_c=172, groups=1, factor=1.0, nl="swish", size=64, kernel_size=3)
 
         # self.betadel = BetaDeltaModel(0.5, 0.5)
-        
+
 
         # context parameters (note that these are *not* registered parameters of the model!)
         self.num_context_params = num_context_params
