@@ -59,7 +59,8 @@ def run(args, log_interval=50, rerun=False):
     elif args.task == 'gray': # nohup python3 regression/main.py --task gray --n_iter 100 --num_context_params=1024 > nohup.log &
         task_family_train = tasks_gray.RegressionTasksGray(mode='train')
         task_family_valid = tasks_gray.RegressionTasksGray(mode='valid')
-        task_family_test = tasks_gray.RegressionTasksGray(mode='adapt')
+        task_family_adapt = tasks_gray.RegressionTasksGray(mode='adapt')
+        task_family_adapt_valid = tasks_gray.RegressionTasksGray(mode='adapt_test')
     elif args.task == 'celeba':
         task_family_train = tasks_celebA.CelebADataset('train', device=args.device)
         task_family_valid = tasks_celebA.CelebADataset('valid', device=args.device)
@@ -225,29 +226,30 @@ def run(args, log_interval=50, rerun=False):
 
         if i_iter % log_interval == 0:
 
-            # evaluate on training set
-            loss_mean, loss_conf = eval_cavia(args, copy.deepcopy(model), task_family=task_family_train,
+            # (re) adapt on the train set, then evaluate on the validation set
+            loss_train, loss_valid, _ = eval_cavia(args, copy.deepcopy(model), task_family=task_family_train, task_family_test=task_family_valid,
                                               num_updates=args.num_inner_updates)
-            logger.train_loss.append(loss_mean)
-            logger.train_conf.append(loss_conf)
+            logger.train_loss.append(loss_train)
+            logger.test_loss.append(loss_valid)
 
-            # evaluate on test set
-            loss_mean, loss_conf = eval_cavia(args, copy.deepcopy(model), task_family=task_family_valid,
+            # adapt on adapatation train set, then evaluate on its validation set
+            loss_adapt, loss_adapt_test, all_adapt_losses = eval_cavia(args, copy.deepcopy(model), task_family=task_family_adapt, task_family_test=task_family_adapt_valid,
                                               num_updates=args.num_inner_updates)
-            logger.valid_loss.append(loss_mean)
-            logger.valid_conf.append(loss_conf)
+            logger.adapt_loss.append(loss_adapt)
+            logger.adapt_loss_test.append(loss_adapt_test)
+            logger.adapt_losses_test.append(all_adapt_losses)
 
-            # evaluate on adaptation set
-            loss_mean, loss_conf = eval_cavia(args, copy.deepcopy(model), task_family=task_family_test,
-                                              num_updates=args.num_inner_updates)
-            logger.test_loss.append(loss_mean)
-            logger.test_conf.append(loss_conf)
+            # # evaluate on adaptation set
+            # loss_mean, loss_conf = eval_cavia(args, copy.deepcopy(model), task_family=task_family_test,
+            #                                   num_updates=args.num_inner_updates)
+            # logger.test_loss.append(loss_mean)
+            # logger.test_conf.append(loss_conf)
 
             # save logging results
             utils.save_obj(logger, path)
 
             # save best model
-            if logger.valid_loss[-1] == np.min(logger.valid_loss):
+            if logger.test_loss[-1] == np.min(logger.test_loss):
                 print('saving best model at iter', i_iter)
                 logger.best_valid_model = copy.deepcopy(model)
 
@@ -263,7 +265,7 @@ def run(args, log_interval=50, rerun=False):
     return logger
 
 
-def eval_cavia(args, model, task_family, num_updates, n_tasks=100, return_gradnorm=False):
+def eval_cavia(args, model, task_family, task_family_test, num_updates, n_tasks=100, return_gradnorm=False):
     # get the task family
     ode_tasks = ['selkov', 'lotka', 'g_osci', 'gray']
 
@@ -278,11 +280,13 @@ def eval_cavia(args, model, task_family, num_updates, n_tasks=100, return_gradno
         n_tasks = len(task_family.environments)
 
     # logging
-    losses = []
     gradnorms = []
 
     # --- inner loop ---
     total_loss = 0
+
+    losses_test = []
+    total_loss_test = 0
 
     for t in range(n_tasks):
 
@@ -297,14 +301,24 @@ def eval_cavia(args, model, task_family, num_updates, n_tasks=100, return_gradno
         if args.task in ode_tasks:
             curr_inputs, t_eval = task_family.sample_inputs(args.k_shot_eval, t, args.use_ordered_pixels)
             curr_inputs, t_eval = curr_inputs.to(args.device), t_eval.to(args.device)
+
+            curr_inputs_test, t_eval_test = task_family_test.sample_inputs(args.k_shot_eval, t, args.use_ordered_pixels)
+            curr_inputs_test, t_eval_test = curr_inputs_test.to(args.device), t_eval_test.to(args.device)
         else:
             curr_inputs = task_family.sample_inputs(args.k_shot_eval, args.use_ordered_pixels).to(args.device)
+
+            curr_inputs_test = task_family_test.sample_inputs(args.k_shot_eval, args.use_ordered_pixels).to(args.device)
 
         if args.task in ode_tasks:
             curr_targets, t_eval= task_family.sample_targets(args.k_shot_eval, t, args.use_ordered_pixels)
             curr_targets, t_eval = curr_targets.to(args.device), t_eval.to(args.device)
+
+            curr_targets_test, t_eval_test = task_family_test.sample_targets(args.k_shot_eval, t, args.use_ordered_pixels)
+            curr_targets_test, t_eval_test = curr_targets_test.to(args.device), t_eval_test.to(args.device)
         else:
             curr_targets = target_function(curr_inputs)
+
+            curr_targets_test = target_function(curr_inputs_test)
 
         # ------------ update on current task ------------
 
@@ -364,12 +378,23 @@ def eval_cavia(args, model, task_family, num_updates, n_tasks=100, return_gradno
 
         #     curr_outputs = model(curr
 
+        ## Eval on train set
         if args.task in ode_tasks:
             curr_outputs = model(curr_inputs, t_eval)
         else:
             curr_outputs = model(curr_inputs)
         task_loss = F.mse_loss(curr_outputs, curr_targets).detach().item()
         total_loss += task_loss
+
+        ## Eval on test set
+        if args.task in ode_tasks:
+            curr_outputs_test = model(curr_inputs_test, t_eval_test)
+        else:
+            curr_outputs_test = model(curr_inputs_test)
+        task_loss_test = F.mse_loss(curr_outputs_test, curr_targets_test).detach().item()
+        losses_test.append(task_loss_test)
+        total_loss_test += task_loss_test
+
         model.train()
 
     # losses = [total_loss / n_tasks]*5
@@ -381,10 +406,12 @@ def eval_cavia(args, model, task_family, num_updates, n_tasks=100, return_gradno
     #     return losses_mean, np.mean(np.abs(losses_conf - losses_mean)), np.mean(gradnorms)
 
     losses_mean = total_loss / n_tasks
+    losses_mean_test = total_loss_test / n_tasks
+
     if not return_gradnorm:
-        return losses_mean, 0.
+        return losses_mean, losses_mean_test, losses_test
     else:
-        return losses_mean, 0., np.mean(gradnorms)
+        return losses_mean, losses_mean_test, np.mean(gradnorms)
 
 
 

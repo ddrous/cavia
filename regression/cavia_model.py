@@ -237,6 +237,8 @@ class GroupConv(nn.Module):
             GroupActivation(nl, groups=groups),
             nn.Conv2d(hidden_c * groups, hidden_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups),
             GroupActivation(nl, groups=groups),
+            nn.Conv2d(hidden_c * groups, hidden_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups),
+            GroupActivation(nl, groups=groups),
             nn.Conv2d(hidden_c * groups, state_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups)
         )
         self.flatten = nn.Flatten()
@@ -302,7 +304,7 @@ class CaviaModelConv(nn.Module):
 
         self.device = device
         # Convolutional layers
-        self.odefunc = GroupConv(2, hidden_c=184, groups=1, factor=1e-3, nl="swish", size=64, kernel_size=3)
+        self.odefunc = GroupConv(2, hidden_c=150, groups=1, factor=1e-3, nl="swish", size=64, kernel_size=3)
 
         # self.betadel = BetaDeltaModel(0.5, 0.5)
 
@@ -340,7 +342,7 @@ class CaviaModelConv(nn.Module):
 
 
         # t_eval = torch.Tensor([0, 0., 1.]).to(self.device)
-        t_eval = torch.linspace(0, 100, 10).to(self.device)
+        # t_eval = torch.linspace(0, 100, 10).to(self.device)
 
         options = {"first_step":50, "dtype":torch.float64}
         pred_y = odeint(newodefunc, x, t_eval, method='dopri5', rtol=1e-3, atol=1e-6, options=options)[:,...]
@@ -353,7 +355,6 @@ class CaviaModelConv(nn.Module):
         #     pred_y.append(odeint(newodefunc, x, t_eval[i:i+2], method='dopri5', rtol=1e-3, atol=1e-6, options=options)[-1,...])
         # pred_y = torch.stack(pred_y, dim=0)
 
-        print("pred_y", pred_y.shape)
 
 
 

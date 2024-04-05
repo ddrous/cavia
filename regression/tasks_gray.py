@@ -22,7 +22,7 @@ class RegressionTasksGray:
                 {"f": 0.03, "k": 0.058, "r_u": 0.2097, "r_v": 0.105},
                 {"f": 0.039, "k": 0.062, "r_u": 0.2097, "r_v": 0.105}
             ]
-        elif mode == "adapt":
+        elif mode == "adapt" or mode == "adapt_test":
         ## Adaptation environments
             from itertools import product
             f = [0.033, 0.036]
@@ -42,6 +42,8 @@ class RegressionTasksGray:
                 self.data = np.load('regression/data_gray/test_data.npz')
             elif self.mode == "adapt":
                 self.data = np.load('regression/data_gray/adapt_data.npz')
+            elif self.mode == "adapt_test":
+                self.data = np.load('regression/data_gray/adapt_data_test.npz')
 
         X = self.data['X']
         # inputs = X[env_id, :, :-1, :].reshape((-1, self.num_inputs))
@@ -57,6 +59,8 @@ class RegressionTasksGray:
                 self.data = np.load('regression/data_gray/test_data.npz')
             elif self.mode == "adapt":
                 self.data = np.load('regression/data_gray/adapt_data.npz')
+            elif self.mode == "adapt_test":
+                self.data = np.load('regression/data_gray/adapt_data_test.npz')
 
         X = self.data['X']
         outputs = X[env_id, :, :, :]
