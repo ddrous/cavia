@@ -52,6 +52,11 @@ class CaviaModelOld(nn.Module):
 
 
 
+
+
+
+
+
 class ODEFunc(nn.Module):
     """
     Feed-forward neural network with context parameters.
@@ -86,6 +91,97 @@ class ODEFunc(nn.Module):
         y = self.fc_layers[-1](x)
 
         return y
+
+
+
+
+
+
+class BetaDeltaModel(nn.Module):
+    def __init__(self, beta, delta):
+        super(BetaDeltaModel, self).__init__()
+        # beta, delta = torch.tensor(beta, requires_grad=True), torch.tensor(delta, requires_grad=True)
+        # self.parameters = nn.ParameterList([beta, delta])
+
+        # self.beta, self.delta = torch.tensor(beta, requires_grad=True), torch.tensor(delta, requires_grad=True)
+
+        ## One linear layer that takes in the context parameters
+        self.layer = nn.Linear(16, 2)
+
+
+    def forward(self, ctx):
+        # return self.parameters()
+        # return self.beta, self.delta
+        return torch.nn.Sigmoid()(self.layer(ctx))
+
+
+
+
+class CaviaModel(nn.Module):
+    """
+    Feed-forward vector field with context parameters.
+    """
+
+    def __init__(self,
+                 n_in,
+                 n_out,
+                 num_context_params,
+                 n_hidden,
+                 device
+                 ):
+        super(CaviaModel, self).__init__()
+
+        self.device = device
+
+        # fully connected layers
+        self.odefunc = ODEFunc(n_in, n_out, num_context_params, n_hidden, device)
+
+        ## Convolutional layers
+        # self.odefunc = GroupConv(2, hidden_c=172, groups=1, factor=1.0, nl="swish", size=64, kernel_size=3)
+
+        # self.betadel = BetaDeltaModel(0.5, 0.5)
+
+
+        # context parameters (note that these are *not* registered parameters of the model!)
+        self.num_context_params = num_context_params
+        self.context_params = None
+        self.reset_context_params()
+
+        # self.parameters = nn.ParameterList([self.betadel.beta, self.betadel.delta, self.context_params])
+
+ 
+    def reset_context_params(self):
+        self.context_params = torch.zeros(self.num_context_params).to(self.device)
+        self.context_params.requires_grad = True
+
+    def forward(self, x, t_eval):
+
+        # print(x.shape, t_eval.shape)
+
+        def newodefunc(t,x):
+            return self.odefunc(t,x,self.context_params,)
+        pred_y = odeint(newodefunc, x, t_eval, method='dopri5')[:,...]
+        # pred_y = odeint_adjoint(newodefunc, x, t_eval, method='dopri5')[:,...]
+
+        # beta, delta = self.betadel(self.context_params)
+        # def lotka_voltera(t, y):
+        #     y = y[0,...]
+        #     dx = 0.5*y[0] - beta * y[0] * y[1]
+        #     dy = delta * y[0] * y[1] - 0.5*y[1]
+        #     return torch.stack([dx, dy])
+        # pred_y = odeint(lotka_voltera, x, t_eval, method='rk4')[:,...]
+
+        return pred_y
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -152,7 +248,9 @@ class GroupConv(nn.Module):
 
         ## repeat the context to match the batch size
         # context = context.repeat(x.shape[0], -1)
-        context = torch.broadcast_to(context, (x.shape[0], context.shape[0])).view(x.shape[0], 1, 32, 32)
+        # context = torch.broadcast_to(context, (x.shape[0], context.shape[0])).view(x.shape[0], 1, 32, 32)
+        context = torch.broadcast_to(context, (x.shape[0], context.shape[0])).reshape(x.shape[0], 1, 32, 32)
+        # context = context.reshape(x.shape[0], 1, 32, 32)
 
         ## The context is stacked as one channel of the 32x32 image
         # context = context
@@ -169,73 +267,27 @@ class GroupConv(nn.Module):
         return self.flatten(x)
 
 
-# class CaviaModel(nn.Module):
-#     """
-#     Feed-forward neural network with context parameters.
-#     """
 
-#     def __init__(self,
-#                  n_in,
-#                  n_out,
-#                  num_context_params,
-#                  n_hidden,
-#                  dt,
-#                  device
-#                  ):
-#         super(CaviaModel, self).__init__()
-
-#         self.device = device
-
-#         # fully connected layers
-#         self.dt = dt
-#         self.odefunc = ODEFunc(n_in, n_out, num_context_params, n_hidden, device)
-
-#         # context parameters (note that these are *not* registered parameters of the model!)
-#         self.num_context_params = num_context_params
-#         self.context_params = None
-#         self.reset_context_params()
-
-#     def reset_context_params(self):
-#         self.context_params = torch.zeros(self.num_context_params).to(self.device)
-#         self.context_params.requires_grad = True
-
-#     def forward(self, x):
-
-#         # concatenate input with context parameters
-#         # pred_y = odeint(self.odefunc, x, self.dt, self.context_params).to(self.device)
-
-#         t = torch.tensor([0., self.dt]).to(self.device)
-#         def newodefunc(t,x):
-#             return self.odefunc(t,x,self.context_params,)
-#         pred_y = odeint(newodefunc, x, t,  method='dopri5')[-1,...]
-
-#         # pred_y = self.odefunc(0, x, self.context_params)
-
-#         return pred_y
-
-class BetaDeltaModel(nn.Module):
-    def __init__(self, beta, delta):
-        super(BetaDeltaModel, self).__init__()
-        # beta, delta = torch.tensor(beta, requires_grad=True), torch.tensor(delta, requires_grad=True)
-        # self.parameters = nn.ParameterList([beta, delta])
-
-        # self.beta, self.delta = torch.tensor(beta, requires_grad=True), torch.tensor(delta, requires_grad=True)
-
-        ## One linear layer that takes in the context parameters
-        self.layer = nn.Linear(16, 2)
-
-
-    def forward(self, ctx):
-        # return self.parameters()
-        # return self.beta, self.delta
-        return torch.nn.Sigmoid()(self.layer(ctx))
-
-
-
-
-class CaviaModel(nn.Module):
+class ODEFuncWithContext(nn.Module):
     """
     Feed-forward neural network with context parameters.
+    """
+
+    def __init__(self, odefunc, context):
+        super(ODEFuncWithContext, self).__init__()
+
+        self.odefunc = odefunc
+        self.context = context
+
+    def forward(self, t, x):
+        return self.odefunc(t, x, self.context)
+
+
+
+
+class CaviaModelConv(nn.Module):
+    """
+    Convolutional vector field with context parameters.
     """
 
     def __init__(self,
@@ -245,15 +297,12 @@ class CaviaModel(nn.Module):
                  n_hidden,
                  device
                  ):
-        super(CaviaModel, self).__init__()
+        super(CaviaModelConv, self).__init__()
 
         self.device = device
 
-        # fully connected layers
-        self.odefunc = ODEFunc(n_in, n_out, num_context_params, n_hidden, device)
-
-        ## Convolutional layers
-        # self.odefunc = GroupConv(2, hidden_c=172, groups=1, factor=1.0, nl="swish", size=64, kernel_size=3)
+        # Convolutional layers
+        self.odefunc = GroupConv(2, hidden_c=184, groups=1, factor=1e-3, nl="swish", size=64, kernel_size=3)
 
         # self.betadel = BetaDeltaModel(0.5, 0.5)
 
@@ -262,6 +311,7 @@ class CaviaModel(nn.Module):
         self.num_context_params = num_context_params
         self.context_params = None
         self.reset_context_params()
+        # self.newodefunc = ODEFuncWithContext(self.odefunc, self.context_params)
 
         # self.parameters = nn.ParameterList([self.betadel.beta, self.betadel.delta, self.context_params])
 
@@ -274,9 +324,22 @@ class CaviaModel(nn.Module):
 
         # print(x.shape, t_eval.shape)
 
-        def newodefunc(t,x):
-            return self.odefunc(t,x,self.context_params,)
-        pred_y = odeint(newodefunc, x, t_eval, method='dopri5')[:,...]
+        # def newodefunc(t,x):
+        #     return self.odefunc(t,x,self.context_params,)
+        # pred_y = odeint(newodefunc, x, t_eval, method='dopri5')[:,...]
+        # # pred_y = odeint_adjoint(newodefunc, x, t_eval, method='dopri5', adjoint_params=())[:,...]
+
+
+        newodefunc = ODEFuncWithContext(self.odefunc, self.context_params)
+        # self.newodefunc.context = self.context_params
+        # self.newodefunc.forward = lambda t, x: self.odefunc(t, x, self.context_params)
+
+        # options=dict(step_size=40)
+        # pred_y = odeint(newodefunc, x, t_eval, method='euler', rtol=1e-3, atol=1e-6, options=options)[:,...]
+
+        # options=dict(first_step=1e-4, dtype=torch.float64)
+        options = {"first_step":1e-4, "dtype":torch.float64}
+        pred_y = odeint(newodefunc, x, t_eval, method='dopri5', rtol=1e-5, atol=1e-6, options=options)[:,...]
         # pred_y = odeint_adjoint(newodefunc, x, t_eval, method='dopri5')[:,...]
 
         # beta, delta = self.betadel(self.context_params)
@@ -288,11 +351,6 @@ class CaviaModel(nn.Module):
         # pred_y = odeint(lotka_voltera, x, t_eval, method='rk4')[:,...]
 
         return pred_y
-
-
-
-
-
 
 
 
@@ -348,3 +406,5 @@ class CaviaModel(nn.Module):
 #         y = self.fc_layers[-1](x)
 
 #         return y
+
+

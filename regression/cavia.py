@@ -13,7 +13,7 @@ import torch.optim as optim
 
 import utils
 import tasks_sine, tasks_celebA, tasks_selkov, tasks_lotka, tasks_g_osci, tasks_gray
-from cavia_model import CaviaModel, CaviaModelOld
+from cavia_model import CaviaModel, CaviaModelOld, CaviaModelConv
 from logger import Logger
 
 
@@ -42,11 +42,11 @@ def run(args, log_interval=50, rerun=False):
         task_family_train = tasks_sine.RegressionTasksSinusoidal()
         task_family_valid = tasks_sine.RegressionTasksSinusoidal()
         task_family_test = tasks_sine.RegressionTasksSinusoidal()
-    elif args.task == "selkov": # nohup python3 regression/main.py --task selkov --n_iter 100 --tasks_per_metaupdate 16 > nohup.log &
+    elif args.task == "selkov": # nohup python3 regression/main.py --task selkov --n_iter 100 --num_context_params 256 > nohup.log &
         task_family_train = tasks_selkov.RegressionTasksSelkov(mode='train')
         task_family_valid = tasks_selkov.RegressionTasksSelkov(mode='valid')
         task_family_test = tasks_selkov.RegressionTasksSelkov(mode='adapt')
-    elif args.task == "lotka": # nohup python3 regression/main.py --task selkov --n_iter 100 --tasks_per_metaupdate 16 > nohup.log &
+    elif args.task == "lotka": # nohup python3 regression/main.py --task selkov --n_iter 100 --num_context_params 256 > nohup.log &
         task_family_train = tasks_lotka.RegressionTasksLotka(mode='train')
         task_family_valid = tasks_lotka.RegressionTasksLotka(mode='valid')
         task_family_test = tasks_lotka.RegressionTasksLotka(mode='adapt')
@@ -54,7 +54,7 @@ def run(args, log_interval=50, rerun=False):
         task_family_train = tasks_g_osci.RegressionTasksGOsci(mode='train')
         task_family_valid = tasks_g_osci.RegressionTasksGOsci(mode='valid')
         task_family_test = tasks_g_osci.RegressionTasksGOsci(mode='adapt')
-    elif args.task == 'gray':
+    elif args.task == 'gray': # nohup python3 regression/main.py --task gray --n_iter 100 --num_context_params=1024 > nohup.log &
         task_family_train = tasks_gray.RegressionTasksGray(mode='train')
         task_family_valid = tasks_gray.RegressionTasksGray(mode='valid')
         task_family_test = tasks_gray.RegressionTasksGray(mode='adapt')
@@ -66,8 +66,16 @@ def run(args, log_interval=50, rerun=False):
         raise NotImplementedError
 
     # initialise network
-    if args.task in ode_tasks:
+    if args.task in ['selkov', 'lotka', 'g_osci']:
         model = CaviaModel(n_in=task_family_train.num_inputs,
+                        n_out=task_family_train.num_outputs,
+                        num_context_params=args.num_context_params,
+                        n_hidden=args.num_hidden_layers,
+                        device=args.device
+                        ).to(args.device)
+        n_training_tasks = len(task_family_train.environments)
+    elif args.task in ['gray']:
+        model = CaviaModelConv(n_in=task_family_train.num_inputs,
                         n_out=task_family_train.num_outputs,
                         num_context_params=args.num_context_params,
                         n_hidden=args.num_hidden_layers,
@@ -85,6 +93,7 @@ def run(args, log_interval=50, rerun=False):
 
     ## Count the number of parameters in the model
     print("Number of parameters in the model: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
+    ## We want approximat
     # print("Number of parameters in the model: ", count_parameters(model, mode='ind'))
     # print("Number of environemtns: ", n_training_tasks, args.tasks_per_metaupdate)
 
@@ -129,9 +138,12 @@ def run(args, log_interval=50, rerun=False):
 
             # print("input:", train_inputs)
             # print("outputs:", train_targets)
-
+            # import gc
+            # gc.collect()
+            # print(torch.cuda.memory_summary(device=None, abbreviated=False))
 
             # train_inputs = train_inputs.to(args.device)
+            # print(torch.cuda.memory_summary())
 
             for _ in range(args.num_inner_updates):
                 # forward through model
@@ -205,6 +217,7 @@ def run(args, log_interval=50, rerun=False):
 
         # reset context params
         model.reset_context_params()
+
 
         # ------------ logging ------------
 
