@@ -20,6 +20,7 @@ results/
 *result_plots
 *result_files
 
+venv/*
 
 ##
 regression/data_gray/*.npz

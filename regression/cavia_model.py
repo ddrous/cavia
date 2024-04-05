@@ -299,8 +299,8 @@ class CaviaModelConv(nn.Module):
                  ):
         super(CaviaModelConv, self).__init__()
 
-        self.device = device
 
+        self.device = device
         # Convolutional layers
         self.odefunc = GroupConv(2, hidden_c=184, groups=1, factor=1e-3, nl="swish", size=64, kernel_size=3)
 
@@ -336,19 +336,27 @@ class CaviaModelConv(nn.Module):
 
         # options=dict(step_size=40)
         # pred_y = odeint(newodefunc, x, t_eval, method='euler', rtol=1e-3, atol=1e-6, options=options)[:,...]
-
-        # options=dict(first_step=1e-4, dtype=torch.float64)
-        options = {"first_step":1e-4, "dtype":torch.float64}
-        pred_y = odeint(newodefunc, x, t_eval, method='dopri5', rtol=1e-5, atol=1e-6, options=options)[:,...]
         # pred_y = odeint_adjoint(newodefunc, x, t_eval, method='dopri5')[:,...]
 
-        # beta, delta = self.betadel(self.context_params)
-        # def lotka_voltera(t, y):
-        #     y = y[0,...]
-        #     dx = 0.5*y[0] - beta * y[0] * y[1]
-        #     dy = delta * y[0] * y[1] - 0.5*y[1]
-        #     return torch.stack([dx, dy])
-        # pred_y = odeint(lotka_voltera, x, t_eval, method='rk4')[:,...]
+
+        # t_eval = torch.Tensor([0, 0., 1.]).to(self.device)
+        t_eval = torch.linspace(0, 100, 10).to(self.device)
+
+        options = {"first_step":50, "dtype":torch.float64}
+        pred_y = odeint(newodefunc, x, t_eval, method='dopri5', rtol=1e-3, atol=1e-6, options=options)[:,...]
+        # # pred_y = odeint(newodefunc, x, t_eval, method='dopri5', options=options)[:,...]
+
+
+        ## In a for loop, integrate fron t[i] to t[i+1] and concatenate the results
+        # pred_y = [x]
+        # for i in range(len(t_eval)-1):
+        #     pred_y.append(odeint(newodefunc, x, t_eval[i:i+2], method='dopri5', rtol=1e-3, atol=1e-6, options=options)[-1,...])
+        # pred_y = torch.stack(pred_y, dim=0)
+
+        print("pred_y", pred_y.shape)
+
+
+
 
         return pred_y
 

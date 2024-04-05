@@ -7,7 +7,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from PIL import Image
-from torchvision.transforms import transforms
+# from torchvision.transforms import transforms
 
 
 def ravel_index(x, y, img_size):

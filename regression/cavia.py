@@ -17,6 +17,8 @@ from cavia_model import CaviaModel, CaviaModelOld, CaviaModelConv
 from logger import Logger
 
 
+## Print if CUDA is available
+print("CUDA available: ", torch.cuda.is_available())
 
 
 def run(args, log_interval=50, rerun=False):
@@ -262,7 +264,6 @@ def run(args, log_interval=50, rerun=False):
 
 
 def eval_cavia(args, model, task_family, num_updates, n_tasks=100, return_gradnorm=False):
-    """ adaptation ? """
     # get the task family
     ode_tasks = ['selkov', 'lotka', 'g_osci', 'gray']
 
@@ -310,7 +311,13 @@ def eval_cavia(args, model, task_family, num_updates, n_tasks=100, return_gradno
         for _ in range(1, num_updates + 1):
 
             # forward pass
-            if args.task in ode_tasks:
+            # if args.task == "gray" and task_family.mode == "valid": ## Predict one after another, then concatenate
+            #     curr_outputs = []
+            #     for i in range(curr_inputs.shape[0]):
+            #         curr_output = model(curr_inputs[i:i+1], t_eval)
+            #         curr_outputs.append(curr_output)
+            #     curr_outputs = torch.cat(curr_outputs, dim=1)
+            if args.task in ['selkov', 'lotka', 'g_osci', 'gray']:
                 curr_outputs = model(curr_inputs, t_eval)
             else:
                 curr_outputs = model(curr_inputs)
