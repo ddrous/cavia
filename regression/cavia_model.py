@@ -344,8 +344,8 @@ class CaviaModelConv(nn.Module):
         # t_eval = torch.Tensor([0, 0., 1.]).to(self.device)
         # t_eval = torch.linspace(0, 100, 10).to(self.device)
 
-        options = {"first_step":50, "dtype":torch.float64}
-        pred_y = odeint(newodefunc, x, t_eval, method='dopri5', rtol=1e-3, atol=1e-6, options=options)[:,...]
+        options = {"first_step":50, "dtype":torch.float64, "step_size":100}
+        pred_y = odeint(newodefunc, x, t_eval, method='rk4', rtol=1e-3, atol=1e-6, options=options)[:,...]
         # # pred_y = odeint(newodefunc, x, t_eval, method='dopri5', options=options)[:,...]
 
 
@@ -359,7 +359,7 @@ class CaviaModelConv(nn.Module):
 
 
 
-        return pred_y
+        return pred_y * 1e-3
 
 
 

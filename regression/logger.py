@@ -29,15 +29,15 @@ class Logger:
         #     )
         # , flush=True)
 
+        rounded_losses = [np.round(loss, 4) for loss in self.adapt_losses_test[-1]]
         print(
-            'Iter {:<4} - time: {:<5} - [train]: {:<6} - [valid]: {:<6} - [adapt]: {:<6} - [adapt_test]: {:<6}'.format(
+            'Iter {:<4} - time: {:<5} - [train]: {:<6} - [valid]: {:<6} - [adapt]: {:<6} - [adapt_test]: {:<6} - [adapt_test_per_env]: {}'.format(
                 iter_idx,
                 int(time.time() - start_time),
                 np.round(self.train_loss[-1], 4),
                 np.round(self.test_loss[-1], 4),
                 np.round(self.adapt_loss[-1], 4),
                 np.round(self.adapt_loss_test[-1], 4),
+                rounded_losses,
             )
         , flush=True)
-        rounded_losses = [np.round(loss, 4) for loss in self.adapt_losses_test[-1]]
-        print('Iter {:<4} - All losses: {}'.format(iter_idx, rounded_losses), flush=True)
