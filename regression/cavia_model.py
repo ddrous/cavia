@@ -239,6 +239,12 @@ class GroupConv(nn.Module):
             GroupActivation(nl, groups=groups),
             nn.Conv2d(hidden_c * groups, hidden_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups),
             GroupActivation(nl, groups=groups),
+            nn.Conv2d(hidden_c * groups, hidden_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups),
+            GroupActivation(nl, groups=groups),
+            nn.Conv2d(hidden_c * groups, hidden_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups),
+            GroupActivation(nl, groups=groups),
+            nn.Conv2d(hidden_c * groups, hidden_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups),
+            GroupActivation(nl, groups=groups),
             nn.Conv2d(hidden_c * groups, state_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups)
         )
         self.flatten = nn.Flatten()
@@ -304,7 +310,7 @@ class CaviaModelConv(nn.Module):
 
         self.device = device
         # Convolutional layers
-        self.odefunc = GroupConv(2, hidden_c=150, groups=1, factor=1e-3, nl="swish", size=64, kernel_size=3)
+        self.odefunc = GroupConv(2, hidden_c=10, groups=1, factor=1e-3, nl="swish", size=64, kernel_size=3)
 
         # self.betadel = BetaDeltaModel(0.5, 0.5)
 
@@ -344,7 +350,8 @@ class CaviaModelConv(nn.Module):
         # t_eval = torch.Tensor([0, 0., 1.]).to(self.device)
         # t_eval = torch.linspace(0, 100, 10).to(self.device)
 
-        options = {"first_step":50, "dtype":torch.float64, "step_size":100}
+        options = {"first_step":10, "dtype":torch.float64, "step_size":40}
+        # options = {"first_step":50, "dtype":torch.float64}
         pred_y = odeint(newodefunc, x, t_eval, method='rk4', rtol=1e-3, atol=1e-6, options=options)[:,...]
         # # pred_y = odeint(newodefunc, x, t_eval, method='dopri5', options=options)[:,...]
 
@@ -359,7 +366,7 @@ class CaviaModelConv(nn.Module):
 
 
 
-        return pred_y * 1e-3
+        return pred_y * 1e-1
 
 
 
