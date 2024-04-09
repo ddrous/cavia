@@ -15,12 +15,18 @@ class RegressionTasksSelkov:
         # self.b_param = [b for b in np.linspace(0.1, 1.0, 10)]
 
         # self.input_range = [-5, 5]
+        train_envs = environments = [(0.1, b) for b in list(np.linspace(-1, -0.25, 7))\
+        + list(np.linspace(-0.1, 0.1, 7))\
+        + list(np.linspace(0.25, 1., 7))]
+
+        test_envs = [(0.1, b) for b in [-1.25, -0.65, -0.05, 0.02, 0.6, 1.2]]
+
         if mode == "train":
-            self.environments = [(0.1, b) for b in np.linspace(0.2, 1.0, 15)]
-        elif mode == "valid":
-            self.environments = [(0.1, b) for b in np.linspace(0.2, 1.0, 15)]
+            self.environments = train_envs
+        elif mode == "valid" or mode == "adapt_test":
+            self.environments = train_envs
         elif mode == "adapt":
-            self.environments = [(0.1, b) for b in np.linspace(0.2, 1.0, 15)[2::4]]
+            self.environments = test_envs
         self.mode = mode
 
     def get_input_range(self, size=100):
@@ -35,6 +41,8 @@ class RegressionTasksSelkov:
                 self.data = np.load('regression/data_selkov/test_data.npz')
             elif self.mode == "adapt":
                 self.data = np.load('regression/data_selkov/adapt_data.npz')
+            elif self.mode == "adapt_test":
+                self.data = np.load('regression/data_selkov/adapt_test_data.npz')
 
         X = self.data['X']
         # inputs = X[env_id, :, :-1, :].reshape((-1, self.num_inputs))
@@ -50,6 +58,8 @@ class RegressionTasksSelkov:
                 self.data = np.load('regression/data_selkov/test_data.npz')
             elif self.mode == "adapt":
                 self.data = np.load('regression/data_selkov/adapt_data.npz')
+            elif self.mode == "adapt_test":
+                self.data = np.load('regression/data_selkov/adapt_test_data.npz')
 
         X = self.data['X']
         outputs = X[env_id, :, :, :]

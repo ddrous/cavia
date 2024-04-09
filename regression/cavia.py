@@ -47,7 +47,8 @@ def run(args, log_interval=50, rerun=False):
     elif args.task == "selkov": # nohup python3 regression/main.py --task selkov --n_iter 100 --num_context_params 256 > nohup.log &
         task_family_train = tasks_selkov.RegressionTasksSelkov(mode='train')
         task_family_valid = tasks_selkov.RegressionTasksSelkov(mode='valid')
-        task_family_test = tasks_selkov.RegressionTasksSelkov(mode='adapt')
+        task_family_adapt = tasks_selkov.RegressionTasksSelkov(mode='adapt')
+        task_family_adapt_valid = tasks_selkov.RegressionTasksSelkov(mode='adapt_test')
     elif args.task == "lotka": # nohup python3 regression/main.py --task selkov --n_iter 100 --num_context_params 256 > nohup.log &
         task_family_train = tasks_lotka.RegressionTasksLotka(mode='train')
         task_family_valid = tasks_lotka.RegressionTasksLotka(mode='valid')
