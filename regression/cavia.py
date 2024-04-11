@@ -384,6 +384,12 @@ def eval_cavia(args, model, task_family, task_family_test, num_updates, n_tasks=
             curr_outputs = model(curr_inputs, t_eval)
         else:
             curr_outputs = model(curr_inputs)
+
+        ### Save the input and outputs if the task family is 'adapt' in npz
+        if task_family.mode == 'adapt':
+            if args.task in ode_tasks:
+                np.savez("sample_predictions_cavia.npz", X_hat=curr_outputs.cpu().detach().numpy(), X=curr_targets.cpu().detach().numpy())
+
         task_loss = F.mse_loss(curr_outputs, curr_targets).detach().item()
         total_loss += task_loss
 
