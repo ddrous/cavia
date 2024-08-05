@@ -12,7 +12,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 import utils
-import tasks_sine, tasks_celebA, tasks_selkov, tasks_lotka, tasks_g_osci, tasks_gray
+import tasks_sine, tasks_celebA, tasks_selkov, tasks_lotka, tasks_g_osci, tasks_gray, tasks_brussel
 from cavia_model import CaviaModel, CaviaModelOld, CaviaModelConv
 from logger import Logger
 
@@ -37,7 +37,7 @@ def run(args, log_interval=50, rerun=False):
     utils.set_seed(args.seed)
 
     # --- initialise everything ---
-    ode_tasks = ['selkov', 'lotka', 'g_osci', 'gray']
+    ode_tasks = ['selkov', 'lotka', 'g_osci', 'gray', 'brussel']
 
     # get the task family
     if args.task == 'sine':
@@ -62,6 +62,11 @@ def run(args, log_interval=50, rerun=False):
         task_family_valid = tasks_gray.RegressionTasksGray(mode='valid')
         task_family_adapt = tasks_gray.RegressionTasksGray(mode='adapt')
         task_family_adapt_valid = tasks_gray.RegressionTasksGray(mode='adapt_test')
+    elif args.task == 'brussel': # nohup python3 regression/main.py --task brussel --n_iter 100 --num_context_params=256 > nohup.log &
+        task_family_train = tasks_brussel.RegressionTasksBrussel(mode='train')
+        task_family_valid = tasks_brussel.RegressionTasksBrussel(mode='valid')
+        task_family_adapt = tasks_brussel.RegressionTasksBrussel(mode='adapt')
+        task_family_adapt_valid = tasks_brussel.RegressionTasksBrussel(mode='adapt_test')
     elif args.task == 'celeba':
         task_family_train = tasks_celebA.CelebADataset('train', device=args.device)
         task_family_valid = tasks_celebA.CelebADataset('valid', device=args.device)
@@ -78,7 +83,7 @@ def run(args, log_interval=50, rerun=False):
                         device=args.device
                         ).to(args.device)
         n_training_tasks = len(task_family_train.environments)
-    elif args.task in ['gray']:
+    elif args.task in ['gray', 'brussel']:
         model = CaviaModelConv(n_in=task_family_train.num_inputs,
                         n_out=task_family_train.num_outputs,
                         num_context_params=args.num_context_params,
@@ -97,6 +102,7 @@ def run(args, log_interval=50, rerun=False):
 
     ## Count the number of parameters in the model
     print("Number of parameters in the model: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
+    # We want 117502 total params for Brussel
     ## We want approximat
     # print("Number of parameters in the model: ", count_parameters(model, mode='ind'))
     # print("Number of environemtns: ", n_training_tasks, args.tasks_per_metaupdate)
@@ -268,13 +274,14 @@ def run(args, log_interval=50, rerun=False):
 
 def eval_cavia(args, model, task_family, task_family_test, num_updates, n_tasks=100, return_gradnorm=False):
     # get the task family
-    ode_tasks = ['selkov', 'lotka', 'g_osci', 'gray']
+    ode_tasks = ['selkov', 'lotka', 'g_osci', 'gray', 'brussel']
 
     if args.task in ode_tasks:
         # all_inputs = task_family.data['X'].reshape((-1, task_family.num_inputs))
         pass
     else:
-        input_range = task_family.get_input_range().to(args.device)
+        # input_range = task_family.get_input_range().to(args.device)
+        pass
 
 
     if args.task in ode_tasks:
@@ -332,7 +339,7 @@ def eval_cavia(args, model, task_family, task_family_test, num_updates, n_tasks=
             #         curr_output = model(curr_inputs[i:i+1], t_eval)
             #         curr_outputs.append(curr_output)
             #     curr_outputs = torch.cat(curr_outputs, dim=1)
-            if args.task in ['selkov', 'lotka', 'g_osci', 'gray']:
+            if args.task in ['selkov', 'lotka', 'g_osci', 'gray', 'brussel']:
                 curr_outputs = model(curr_inputs, t_eval)
             else:
                 curr_outputs = model(curr_inputs)

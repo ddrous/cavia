@@ -252,12 +252,14 @@ class GroupConv(nn.Module):
     def forward(self, t, x, context):
         
         ## Reshape the input to the correct shape: 2 channels of 32x32
-        x = x.view(-1, 2, 32, 32)
+        size = 8 ## 8 for brussel, 32 for gray-scott
+
+        x = x.view(-1, 2, size, size)
 
         ## repeat the context to match the batch size
         # context = context.repeat(x.shape[0], -1)
         # context = torch.broadcast_to(context, (x.shape[0], context.shape[0])).view(x.shape[0], 1, 32, 32)
-        context = torch.broadcast_to(context, (x.shape[0], context.shape[0])).reshape(x.shape[0], 1, 32, 32)
+        context = torch.broadcast_to(context, (x.shape[0], context.shape[0])).reshape(x.shape[0], 1, size, size)
         # context = context.reshape(x.shape[0], 1, 32, 32)
 
         ## The context is stacked as one channel of the 32x32 image
@@ -310,7 +312,7 @@ class CaviaModelConv(nn.Module):
 
         self.device = device
         # Convolutional layers
-        self.odefunc = GroupConv(2, hidden_c=10, groups=1, factor=1e-3, nl="swish", size=64, kernel_size=3)
+        self.odefunc = GroupConv(2, hidden_c=46, groups=1, factor=1e-3, nl="swish", size=64, kernel_size=3)
 
         # self.betadel = BetaDeltaModel(0.5, 0.5)
 
@@ -352,7 +354,7 @@ class CaviaModelConv(nn.Module):
 
         options = {"first_step":10, "dtype":torch.float64, "step_size":40}
         # options = {"first_step":50, "dtype":torch.float64}
-        pred_y = odeint(newodefunc, x, t_eval, method='rk4', rtol=1e-3, atol=1e-6, options=options)[:,...]
+        pred_y = odeint(newodefunc, x, t_eval, method='dopri5', rtol=1e-3, atol=1e-6, options=options)[:,...]
         # # pred_y = odeint(newodefunc, x, t_eval, method='dopri5', options=options)[:,...]
 
 
