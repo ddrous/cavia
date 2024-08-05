@@ -12,8 +12,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 import utils
-import tasks_sine, tasks_celebA, tasks_selkov, tasks_lotka, tasks_g_osci, tasks_gray, tasks_brussel
-from cavia_model import CaviaModel, CaviaModelOld, CaviaModelConv
+import tasks_sine, tasks_celebA, tasks_selkov, tasks_lotka, tasks_g_osci, tasks_gray, tasks_brussel, tasks_navier
+from cavia_model import CaviaModel, CaviaModelOld, CaviaModelConv, CaviaModelFNO
 from logger import Logger
 
 
@@ -37,7 +37,7 @@ def run(args, log_interval=50, rerun=False):
     utils.set_seed(args.seed)
 
     # --- initialise everything ---
-    ode_tasks = ['selkov', 'lotka', 'g_osci', 'gray', 'brussel']
+    ode_tasks = ['selkov', 'lotka', 'g_osci', 'gray', 'brussel', 'navier']
 
     # get the task family
     if args.task == 'sine':
@@ -62,11 +62,16 @@ def run(args, log_interval=50, rerun=False):
         task_family_valid = tasks_gray.RegressionTasksGray(mode='valid')
         task_family_adapt = tasks_gray.RegressionTasksGray(mode='adapt')
         task_family_adapt_valid = tasks_gray.RegressionTasksGray(mode='adapt_test')
-    elif args.task == 'brussel': # nohup python3 regression/main.py --task brussel --n_iter 100 --num_context_params=256 > nohup.log &
+    elif args.task == 'brussel': # nohup python3 regression/main.py --task brussel --n_iter 100 --num_context_params=64 > nohup.log &
         task_family_train = tasks_brussel.RegressionTasksBrussel(mode='train')
         task_family_valid = tasks_brussel.RegressionTasksBrussel(mode='valid')
         task_family_adapt = tasks_brussel.RegressionTasksBrussel(mode='adapt')
         task_family_adapt_valid = tasks_brussel.RegressionTasksBrussel(mode='adapt_test')
+    elif args.task == 'navier': # nohup python3 regression/main.py --task navier --n_iter 1200 --num_context_params=202 > nohup.log &
+        task_family_train = tasks_navier.RegressionTasksNavier(mode='train')
+        task_family_valid = tasks_navier.RegressionTasksNavier(mode='valid')
+        task_family_adapt = tasks_navier.RegressionTasksNavier(mode='adapt')
+        task_family_adapt_valid = tasks_navier.RegressionTasksNavier(mode='adapt_test')
     elif args.task == 'celeba':
         task_family_train = tasks_celebA.CelebADataset('train', device=args.device)
         task_family_valid = tasks_celebA.CelebADataset('valid', device=args.device)
@@ -85,6 +90,14 @@ def run(args, log_interval=50, rerun=False):
         n_training_tasks = len(task_family_train.environments)
     elif args.task in ['gray', 'brussel']:
         model = CaviaModelConv(n_in=task_family_train.num_inputs,
+                        n_out=task_family_train.num_outputs,
+                        num_context_params=args.num_context_params,
+                        n_hidden=args.num_hidden_layers,
+                        device=args.device
+                        ).to(args.device)
+        n_training_tasks = len(task_family_train.environments)
+    elif args.task in ['navier']:
+        model = CaviaModelFNO(n_in=task_family_train.num_inputs,
                         n_out=task_family_train.num_outputs,
                         num_context_params=args.num_context_params,
                         n_hidden=args.num_hidden_layers,
@@ -274,7 +287,7 @@ def run(args, log_interval=50, rerun=False):
 
 def eval_cavia(args, model, task_family, task_family_test, num_updates, n_tasks=100, return_gradnorm=False):
     # get the task family
-    ode_tasks = ['selkov', 'lotka', 'g_osci', 'gray', 'brussel']
+    ode_tasks = ['selkov', 'lotka', 'g_osci', 'gray', 'brussel', 'navier']
 
     if args.task in ode_tasks:
         # all_inputs = task_family.data['X'].reshape((-1, task_family.num_inputs))
@@ -339,7 +352,7 @@ def eval_cavia(args, model, task_family, task_family_test, num_updates, n_tasks=
             #         curr_output = model(curr_inputs[i:i+1], t_eval)
             #         curr_outputs.append(curr_output)
             #     curr_outputs = torch.cat(curr_outputs, dim=1)
-            if args.task in ['selkov', 'lotka', 'g_osci', 'gray', 'brussel']:
+            if args.task in ['selkov', 'lotka', 'g_osci', 'gray', 'brussel', 'navier']:
                 curr_outputs = model(curr_inputs, t_eval)
             else:
                 curr_outputs = model(curr_inputs)
