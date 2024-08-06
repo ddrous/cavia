@@ -21,19 +21,13 @@ def parse_args():
 
     parser.add_argument('--num_inner_updates', type=int, default=1, help='number of inner-loop updates (during training)')
 
-    # FOr LV !
+    # FOr Selkov !
     parser.add_argument('--num_context_params', type=int, default=256, help='number of context parameters (added at first layer)')
-    parser.add_argument('--num_hidden_layers', type=int, nargs='+', default=[278]*4)
-    # parser.add_argument('--num_hidden_layers', type=int, nargs='+', default=[245]*5)
-    # parser.add_argument('--num_hidden_layers', type=int, nargs='+', default=[222]*6)
-
-    # # FOr Selkov !
-    # parser.add_argument('--num_context_params', type=int, default=256, help='number of context parameters (added at first layer)')
-    # parser.add_argument('--num_hidden_layers', type=int, nargs='+', default=[84]*5)
+    parser.add_argument('--num_hidden_layers', type=int, nargs='+', default=[84]*5)
 
     # # For GO
     # parser.add_argument('--num_context_params', type=int, default=1, help='number of context parameters (added at first layer)')
-    # parser.add_argument('--num_hidden_layers', type=int, nargs='+', default=[178]*5)
+    # parser.add_argument('--num_hidden_layers', type=int, nargs='+', default=[168]*4)
 
     # # For GS
     # parser.add_argument('--num_context_params', type=int, default=32*32*1, help='number of context parameters (added at first layer)')
