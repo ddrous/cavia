@@ -236,14 +236,14 @@ class GroupConv(nn.Module):
             GroupActivation(nl, groups=groups),
             nn.Conv2d(hidden_c * groups, hidden_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups),
             GroupActivation(nl, groups=groups),
-            nn.Conv2d(hidden_c * groups, hidden_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups),
-            GroupActivation(nl, groups=groups),
-            nn.Conv2d(hidden_c * groups, hidden_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups),
-            GroupActivation(nl, groups=groups),
-            nn.Conv2d(hidden_c * groups, hidden_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups),
-            GroupActivation(nl, groups=groups),
-            nn.Conv2d(hidden_c * groups, hidden_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups),
-            GroupActivation(nl, groups=groups),
+            # nn.Conv2d(hidden_c * groups, hidden_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups),
+            # GroupActivation(nl, groups=groups),
+            # nn.Conv2d(hidden_c * groups, hidden_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups),
+            # GroupActivation(nl, groups=groups),
+            # nn.Conv2d(hidden_c * groups, hidden_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups),
+            # GroupActivation(nl, groups=groups),
+            # nn.Conv2d(hidden_c * groups, hidden_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups),
+            # GroupActivation(nl, groups=groups),
             nn.Conv2d(hidden_c * groups, hidden_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups),
             GroupActivation(nl, groups=groups),
             nn.Conv2d(hidden_c * groups, state_c * groups, kernel_size=kernel_size, padding=padding, padding_mode='circular', groups=groups)
@@ -253,7 +253,7 @@ class GroupConv(nn.Module):
     def forward(self, t, x, context):
         
         ## Reshape the input to the correct shape: 2 channels of 32x32
-        size = 8 ## 8 for brussel, 32 for gray-scott
+        size = 32 ## 8 for brussel, 32 for gray-scott
 
         x = x.view(-1, 2, size, size)
 
@@ -314,7 +314,7 @@ class CaviaModelConv(nn.Module):
 
         self.device = device
         # Convolutional layers
-        self.odefunc = GroupConv(2, hidden_c=46, groups=1, factor=1e-3, nl="swish", size=64, kernel_size=3)
+        self.odefunc = GroupConv(2, hidden_c=184, groups=1, factor=1e-3, nl="swish", size=64, kernel_size=3)
 
         # self.betadel = BetaDeltaModel(0.5, 0.5)
 
